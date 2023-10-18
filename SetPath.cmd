@@ -4,7 +4,7 @@ NET SESSION >nul 2>&1
 IF %ERRORLEVEL% EQU 0 (
     GOTO AUTH
 ) ELSE (
-    ECHO This script must be ran as adminstrator.
+    ECHO This script must be run as adminstrator.
     PAUSE
     EXIT /B
 )

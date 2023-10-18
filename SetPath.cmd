@@ -15,8 +15,6 @@ IF %ERRORLEVEL% EQU 0 (
     SETX MD_NET6_DIRECTORY %directory%
     IF %ERRORLEVEL% NEQ 0 (
         ECHO An error occurred.
-        PAUSE
-        EXIT /B
     ) ELSE (
         ECHO Directory set successfully.
     )

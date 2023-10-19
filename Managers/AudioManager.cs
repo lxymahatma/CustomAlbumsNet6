@@ -1,4 +1,6 @@
-﻿using CustomAlbums.Data;
+﻿using CustomAlbums.Contracts;
+using CustomAlbums.Data;
+using CustomAlbums.Implements;
 using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppAssets.Scripts.PeroTools.Managers;
 using NAudio.Vorbis;
@@ -7,6 +9,7 @@ using UnityEngine;
 using Action = Il2CppSystem.Action;
 using Logger = CustomAlbums.Utilities.Logger;
 
+// ReSharper disable ComplexConditionExpression
 // ReSharper disable AccessToModifiedClosure
 
 namespace CustomAlbums.Managers;
@@ -26,64 +29,49 @@ public static class AudioManager
         return true;
     }
 
+    /// <summary>
+    ///     Loads an audio clip from an mp3 file.
+    /// </summary>
+    /// <param name="stream"></param>
+    /// <param name="name"></param>
+    /// <returns></returns>
     public static AudioClip LoadClipFromMp3(Stream stream, string name)
     {
         var mp3 = new MpegFile(stream);
-        var sampleCount = mp3.Length / sizeof(float);
-        var audioClip = AudioClip.Create(name, (int)sampleCount / mp3.Channels, mp3.Channels, mp3.SampleRate, false);
-
-        var remainingSamples = sampleCount;
-        var index = 0;
+        var mp3Wrapper = new MpegFileWrapper(mp3);
 
         if (name.EndsWith("_music") && mp3.SampleRate != 44100)
             Logger.Warning($"{name}.mp3 is not 44.1khz, desyncs may occur! Consider switching to .ogg format or using 44.1khz");
 
-        Coroutine coroutine = null;
-        coroutine = CreateCoroutine((Il2CppSystem.Func<bool>)delegate
-        {
-            // Stop coroutine if the asset is unloaded
-            if (audioClip is null)
-            {
-                Coroutines.Remove(name);
-                if (_currentCoroutine == coroutine) _currentCoroutine = null;
-
-                Logger.Msg($"Aborting async load of {name}.mp3");
-                return true;
-            }
-
-            // Pause coroutine if it is not active
-            if (coroutine != _currentCoroutine) return false;
-
-            var sampleArray = new float[Math.Min(AsyncReadSpeed, remainingSamples)];
-            var readCount = mp3.ReadSamples(sampleArray, 0, sampleArray.Length);
-
-            audioClip.SetData(sampleArray, index / mp3.Channels);
-
-            index += readCount;
-            remainingSamples -= readCount;
-
-            if (remainingSamples > 0 && readCount != 0) return false;
-
-            stream.Dispose();
-
-            Coroutines.Remove(name);
-            _currentCoroutine = null;
-
-            Logger.Msg($"Finished async load of {name}.mp3");
-            return true;
-        });
-
-        Coroutines.Add(name, coroutine);
-        _currentCoroutine = coroutine;
-
-        return audioClip;
+        return LoadClipFromStream(stream, name, mp3Wrapper);
     }
 
+    /// <summary>
+    ///     Loads an audio clip from an ogg file.
+    /// </summary>
+    /// <param name="stream"></param>
+    /// <param name="name"></param>
+    /// <returns></returns>
     public static AudioClip LoadClipFromOgg(Stream stream, string name)
     {
         var ogg = new VorbisWaveReader(stream);
-        var sampleCount = (int)(ogg.Length / ogg.WaveFormat.BitsPerSample / 8);
-        var audioClip = AudioClip.Create(name, sampleCount / ogg.WaveFormat.Channels, ogg.WaveFormat.Channels, ogg.WaveFormat.SampleRate, false);
+        var oggWrapper = new OggFileWrapper(ogg);
+
+        return LoadClipFromStream(stream, name, oggWrapper);
+    }
+
+    /// <summary>
+    ///     Loads an audio clip from a stream.
+    /// </summary>
+    /// <param name="stream"></param>
+    /// <param name="name"></param>
+    /// <param name="audioWrapper"></param>
+    /// <returns></returns>
+    private static AudioClip LoadClipFromStream(Stream stream, string name, IAudioWrapper audioWrapper)
+    {
+        var sampleCount = audioWrapper.GetSampleCount();
+        var audioClip = AudioClip.Create(name, (int)sampleCount / audioWrapper.Channels,
+            audioWrapper.Channels, audioWrapper.SampleRate, false);
 
         var remainingSamples = sampleCount;
         var index = 0;
@@ -97,7 +85,8 @@ public static class AudioManager
                 Coroutines.Remove(name);
                 if (_currentCoroutine == coroutine) _currentCoroutine = null;
 
-                Logger.Msg($"Aborting async load of {name}.ogg");
+                Logger.Msg($"Aborting async load of {name}.{audioWrapper.Extension}");
+                audioWrapper.Abort();
                 return true;
             }
 
@@ -105,40 +94,21 @@ public static class AudioManager
             if (coroutine != _currentCoroutine) return false;
 
             var sampleArray = new float[Math.Min(AsyncReadSpeed, remainingSamples)];
-            var readCount = ogg.Read(sampleArray, 0, sampleArray.Length);
+            var readCount = audioWrapper.ReadSamples(sampleArray);
 
-            try
-            {
-                audioClip.SetData(sampleArray, index / ogg.WaveFormat.Channels);
-            }
-            catch (Exception e)
-            {
-                if ((double)ogg.Position / 1000 > ogg.Length)
-                    Logger.Warning(
-                        "Possible over-read of audio file. This is a file-dependent anomaly. Consider making a minimal edit and re-saving.");
-                Logger.Error(
-                    $"Exception while reading at offset {index} of {(double)ogg.Position / 1000 / ogg.Length} in {name}, aborting: {e.Message}");
-
-                ogg.Dispose();
-                stream.Dispose();
-
-                Coroutines.Remove(name);
-                _currentCoroutine = null;
-                return true;
-            }
+            audioClip.SetData(sampleArray, index / audioWrapper.Channels);
 
             index += readCount;
             remainingSamples -= readCount;
 
             if (remainingSamples > 0 && readCount != 0) return false;
 
-            ogg.Dispose();
             stream.Dispose();
 
             Coroutines.Remove(name);
             _currentCoroutine = null;
 
-            Logger.Msg($"Finished async load of {name}.ogg");
+            Logger.Msg($"Finished async load of {name}.");
             return true;
         });
 
@@ -148,6 +118,11 @@ public static class AudioManager
         return audioClip;
     }
 
+    /// <summary>
+    ///     Creates a coroutine that runs the pass in function.
+    /// </summary>
+    /// <param name="update"></param>
+    /// <returns></returns>
     private static Coroutine CreateCoroutine(Il2CppSystem.Func<bool> update)
     {
         return SingletonMonoBehaviour<CoroutineManager>.instance.StartCoroutine(

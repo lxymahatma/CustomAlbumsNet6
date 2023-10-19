@@ -11,6 +11,11 @@ public static class CoverManager
 {
     private static readonly Logger Logger = new(nameof(CoverManager));
 
+    /// <summary>
+    ///     Loads a cover from a png file.
+    /// </summary>
+    /// <param name="album"></param>
+    /// <returns></returns>
     public static Sprite GetCover(this Album album)
     {
         if (!album.HasFile("cover.png")) return null;
@@ -25,6 +30,11 @@ public static class CoverManager
         return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
     }
 
+    /// <summary>
+    ///     Loads an animated cover from a gif file.
+    /// </summary>
+    /// <param name="album"></param>
+    /// <returns></returns>
     public static AnimatedCover GetAnimatedCover(this Album album)
     {
         if (!album.HasFile("cover.gif")) return null;

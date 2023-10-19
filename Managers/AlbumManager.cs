@@ -2,7 +2,7 @@
 
 namespace CustomAlbums.Managers;
 
-internal class AlbumManager
+internal static class AlbumManager
 {
     public static readonly int Uid = 999;
     public static readonly string JsonName = $"ALBUM{Uid + 1}";

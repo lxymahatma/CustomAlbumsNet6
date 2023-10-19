@@ -101,39 +101,8 @@ internal class AssetPatch
         else if (assetName == $"{AlbumManager.JsonName}_{language}")
             newAsset = CreateAlbumInfoAsset(assetName);
 
-        if (assetPtr == IntPtr.Zero)
-            // Try load custom asset
-            if (assetName.StartsWith("fs_") || assetName.StartsWith("pkg_"))
-            {
-                var suffix = AssetSuffixes.FirstOrDefault(s => assetName.EndsWith(s));
-                if (!string.IsNullOrEmpty(suffix))
-                {
-                    var albumKey = assetName[..^suffix.Length];
-                    AlbumManager.LoadedAlbums.TryGetValue(albumKey, out var album);
-                    if (suffix.StartsWith("_map"))
-                    {
-                        newAsset = album?.Sheets[int.Parse(suffix[..^4])].StageInfo;
-                        // Do not cache any StageInfo
-                        cacheAsset = false;
-                    }
-                    else
-                        switch (suffix)
-                        {
-                            case "_demo":
-                                newAsset = album?.Demo;
-                                break;
-                            case "_music":
-                                newAsset = album?.Music;
-                                break;
-                            case "_cover":
-                                newAsset = album?.GetCover();
-                                break;
-                            default:
-                                Logger.Msg($"Unknown suffix: {suffix}");
-                                break;
-                        }
-                }
-            }
+        if (assetPtr == IntPtr.Zero && (assetName.StartsWith("fs_") || assetName.StartsWith("pkg_")))
+            cacheAsset = LoadCustomAsset(assetName, out newAsset);
 
         if (newAsset == null) return assetPtr;
 
@@ -279,6 +248,52 @@ internal class AssetPatch
         if (!Singleton<ConfigManager>.instance.m_Dictionary.ContainsKey(assetName))
             Singleton<ConfigManager>.instance.Add(assetName, ((TextAsset)newAsset).text);
         return newAsset;
+    }
+
+    /// <summary>
+    ///     Loads the custom asset
+    /// </summary>
+    /// <param name="assetName"></param>
+    /// <param name="newAsset"></param>
+    /// <returns>Cache asset</returns>
+    private static bool LoadCustomAsset(string assetName, out Object newAsset)
+    {
+        newAsset = null;
+        var cacheAsset = true;
+        var suffix = AssetSuffixes.FirstOrDefault(assetName.EndsWith);
+
+        if (string.IsNullOrEmpty(suffix)) return true;
+
+        var albumKey = assetName[..^suffix.Length];
+        AlbumManager.LoadedAlbums.TryGetValue(albumKey, out var album);
+
+        if (suffix.StartsWith("_map"))
+        {
+            newAsset = album?.Sheets[int.Parse(suffix[..^4])].StageInfo;
+            // Do not cache any StageInfo
+            cacheAsset = false;
+        }
+        else
+            switch (suffix)
+            {
+                case "_demo":
+                    newAsset = album?.Demo;
+                    break;
+
+                case "_music":
+                    newAsset = album?.Music;
+                    break;
+
+                case "_cover":
+                    newAsset = album?.GetCover();
+                    break;
+
+                default:
+                    Logger.Msg($"Unknown suffix: {suffix}");
+                    break;
+            }
+
+        return cacheAsset;
     }
 
     /// <summary>

@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using CustomAlbums.Data;
 using CustomAlbums.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppAssets.Scripts.PeroTools.GeneralLocalization;
@@ -78,19 +79,12 @@ internal class AssetPatch
 
         if (assetName is null or "LocalizationSettings") return assetPtr;
 
-        // there is a cached asset, return it
-        if (LoadedAssets.TryGetValue(assetName, out var asset))
+        if (HasNonNullCachedAsset(assetName, out var asset))
         {
-            if (asset != null)
-            {
-                Logger.Msg(AudioManager.SwitchLoad(assetName)
-                    ? $"Resuming async load of {assetName}"
-                    : $"Using cache for {assetName}");
-                return asset.Pointer;
-            }
-
-            Logger.Msg("Removing null asset");
-            LoadedAssets.Remove(assetName);
+            Logger.Msg(AudioManager.SwitchLoad(assetName)
+                ? $"Resuming async load of {assetName}"
+                : $"Using cache for {assetName}");
+            return asset.Pointer;
         }
 
         var cacheAsset = true;
@@ -99,80 +93,13 @@ internal class AssetPatch
 
         // adding album assets
         if (assetName == AlbumManager.JsonName)
-        {
-            var albumJson = new JsonArray();
-            foreach (var loadedAlbum in AlbumManager.LoadedAlbums)
-            {
-                var key = loadedAlbum.Key;
-                var album = loadedAlbum.Value;
-                var info = album.Info;
-                var infoObject = new JsonObject
-                {
-                    { "uid", $"{AlbumManager.Uid}-{album.Index}" },
-                    { "name", info.Name },
-                    { "author", info.Author },
-                    { "bpm", info.Bpm },
-                    { "music", $"{key}_music" },
-                    { "demo", $"{key}_demo" },
-                    { "cover", $"{key}_cover" },
-                    { "noteJson", $"{key}_map" },
-                    { "scene", info.Scene }
-                };
+            newAsset = CreateInfoJsonAsset(assetName);
 
-                if (!string.IsNullOrEmpty(info.LevelDesigner))
-                    infoObject.Add("levelDesigner", info.LevelDesigner);
-                if (!string.IsNullOrEmpty(info.LevelDesigner1))
-                    infoObject.Add("levelDesigner1", info.LevelDesigner1);
-                if (!string.IsNullOrEmpty(info.LevelDesigner2))
-                    infoObject.Add("levelDesigner2", info.LevelDesigner2);
-                if (!string.IsNullOrEmpty(info.LevelDesigner3))
-                    infoObject.Add("levelDesigner3", info.LevelDesigner3);
-                if (!string.IsNullOrEmpty(info.LevelDesigner4))
-                    infoObject.Add("levelDesigner4", info.LevelDesigner4);
-                if (!string.IsNullOrEmpty(info.Difficulty1))
-                    infoObject.Add("difficulty1", info.Difficulty1);
-                if (!string.IsNullOrEmpty(info.Difficulty2))
-                    infoObject.Add("difficulty2", info.Difficulty2);
-                if (!string.IsNullOrEmpty(info.Difficulty3))
-                    infoObject.Add("difficulty3", info.Difficulty3);
-                if (!string.IsNullOrEmpty(info.Difficulty4))
-                    infoObject.Add("difficulty4", info.Difficulty4);
-
-                albumJson.Add(infoObject);
-            }
-
-            newAsset = CreateTextAsset(assetName, JsonSerializer.Serialize(albumJson));
-            if (!Singleton<ConfigManager>.instance.m_Dictionary.ContainsKey(assetName))
-                Singleton<ConfigManager>.instance.Add(assetName, ((TextAsset)newAsset).text);
-        }
         else if (assetName == $"albums_{language}")
-        {
-            var textAsset = new TextAsset(assetPtr);
-            var jsonArray = JsonSerializer.Deserialize<JsonArray>(textAsset.text);
-            jsonArray.Add(new
-            {
-                title = AlbumManager.Languages[language]
-            });
-            newAsset = CreateTextAsset(assetName, JsonSerializer.Serialize(jsonArray));
-            if (!Singleton<ConfigManager>.instance.m_Dictionary.ContainsKey(assetName))
-                Singleton<ConfigManager>.instance.Add(assetName, ((TextAsset)newAsset).text);
-        }
-        else if (assetName == $"{AlbumManager.JsonName}_{language}")
-        {
-            var jsonArray = new JsonArray();
-            foreach (var loadedAlbum in AlbumManager.LoadedAlbums)
-            {
-                jsonArray.Add(new
-                {
-                    name = loadedAlbum.Value.Info.Name,
-                    author = loadedAlbum.Value.Info.Author
-                });
-            }
+            newAsset = CreateAlbumTitleAsset(assetName, assetPtr, language);
 
-            newAsset = CreateTextAsset(assetName, JsonSerializer.Serialize(jsonArray));
-            if (!Singleton<ConfigManager>.instance.m_Dictionary.ContainsKey(assetName))
-                Singleton<ConfigManager>.instance.Add(assetName, ((TextAsset)newAsset).text);
-        }
+        else if (assetName == $"{AlbumManager.JsonName}_{language}")
+            newAsset = CreateAlbumInfoAsset(assetName);
 
         if (assetPtr == IntPtr.Zero)
             // Try load custom asset
@@ -208,23 +135,158 @@ internal class AssetPatch
                 }
             }
 
-        if (newAsset != null)
+        if (newAsset == null) return assetPtr;
+
+        // Add to cache
+        if (cacheAsset)
         {
-            // Add to cache
-            if (cacheAsset)
-            {
-                LoadedAssets.Add(assetName, newAsset);
-                Logger.Msg($"Cached {assetName}");
-            }
-            else
-                Logger.Msg($"Loaded {assetName}");
-
-            return newAsset.Pointer;
+            LoadedAssets.Add(assetName, newAsset);
+            Logger.Msg($"Cached {assetName}");
         }
+        else
+            Logger.Msg($"Loaded {assetName}");
 
-        return assetPtr;
+        return newAsset.Pointer;
     }
 
+    /// <summary>
+    ///     Checks if the asset is already cached
+    ///     If the asset is cached, it will be returned and the method will return true
+    ///     If the asset is null, it will be removed from the cache and the method will return false
+    /// </summary>
+    /// <param name="assetName"></param>
+    /// <param name="asset"></param>
+    /// <returns>Has non null cached asset</returns>
+    private static bool HasNonNullCachedAsset(string assetName, out Object asset)
+    {
+        if (!LoadedAssets.TryGetValue(assetName, out asset))
+            return false;
+
+        if (asset == null)
+        {
+            Logger.Msg("Removing null asset");
+            LoadedAssets.Remove(assetName);
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     Creates a object (Text Asset) containing all the album info
+    /// </summary>
+    /// <param name="assetName"></param>
+    /// <returns></returns>
+    private static Object CreateInfoJsonAsset(string assetName)
+    {
+        var albumJson = new JsonArray();
+        foreach (var (key, album) in AlbumManager.LoadedAlbums)
+        {
+            var info = album.Info;
+            var infoObject = new JsonObject
+            {
+                { "uid", $"{AlbumManager.Uid}-{album.Index}" },
+                { "name", info.Name },
+                { "author", info.Author },
+                { "bpm", info.Bpm },
+                { "music", $"{key}_music" },
+                { "demo", $"{key}_demo" },
+                { "cover", $"{key}_cover" },
+                { "noteJson", $"{key}_map" },
+                { "scene", info.Scene }
+            };
+
+            FillInfoJsonObject(info, infoObject);
+
+            albumJson.Add(infoObject);
+        }
+
+        Object newAsset = CreateTextAsset(assetName, JsonSerializer.Serialize(albumJson));
+        if (!Singleton<ConfigManager>.instance.m_Dictionary.ContainsKey(assetName))
+            Singleton<ConfigManager>.instance.Add(assetName, ((TextAsset)newAsset).text);
+
+        return newAsset;
+    }
+
+    /// <summary>
+    ///     Fills the info object with the info from the album.
+    /// </summary>
+    /// <param name="info"></param>
+    /// <param name="infoObject"></param>
+    private static void FillInfoJsonObject(AlbumInfo info, JsonObject infoObject)
+    {
+        if (!string.IsNullOrEmpty(info.LevelDesigner))
+            infoObject.Add("levelDesigner", info.LevelDesigner);
+        if (!string.IsNullOrEmpty(info.LevelDesigner1))
+            infoObject.Add("levelDesigner1", info.LevelDesigner1);
+        if (!string.IsNullOrEmpty(info.LevelDesigner2))
+            infoObject.Add("levelDesigner2", info.LevelDesigner2);
+        if (!string.IsNullOrEmpty(info.LevelDesigner3))
+            infoObject.Add("levelDesigner3", info.LevelDesigner3);
+        if (!string.IsNullOrEmpty(info.LevelDesigner4))
+            infoObject.Add("levelDesigner4", info.LevelDesigner4);
+        if (!string.IsNullOrEmpty(info.Difficulty1))
+            infoObject.Add("difficulty1", info.Difficulty1);
+        if (!string.IsNullOrEmpty(info.Difficulty2))
+            infoObject.Add("difficulty2", info.Difficulty2);
+        if (!string.IsNullOrEmpty(info.Difficulty3))
+            infoObject.Add("difficulty3", info.Difficulty3);
+        if (!string.IsNullOrEmpty(info.Difficulty4))
+            infoObject.Add("difficulty4", info.Difficulty4);
+    }
+
+    /// <summary>
+    ///     Create the object (Text Asset) containing the album title
+    /// </summary>
+    /// <param name="assetName"></param>
+    /// <param name="assetPtr"></param>
+    /// <param name="language"></param>
+    /// <returns></returns>
+    private static Object CreateAlbumTitleAsset(string assetName, IntPtr assetPtr, string language)
+    {
+        var textAsset = new TextAsset(assetPtr);
+        var jsonArray = JsonSerializer.Deserialize<JsonArray>(textAsset.text);
+        jsonArray.Add(new
+        {
+            title = AlbumManager.Languages[language]
+        });
+
+        Object newAsset = CreateTextAsset(assetName, JsonSerializer.Serialize(jsonArray));
+        if (!Singleton<ConfigManager>.instance.m_Dictionary.ContainsKey(assetName))
+            Singleton<ConfigManager>.instance.Add(assetName, ((TextAsset)newAsset).text);
+
+        return newAsset;
+    }
+
+    /// <summary>
+    ///     Creates the object (Text Asset) containing the chart name and author
+    /// </summary>
+    /// <param name="assetName"></param>
+    /// <returns></returns>
+    private static Object CreateAlbumInfoAsset(string assetName)
+    {
+        var jsonArray = new JsonArray();
+        foreach (var albumInfo in AlbumManager.LoadedAlbums.Select(x => x.Value.Info))
+        {
+            jsonArray.Add(new
+            {
+                name = albumInfo.Name,
+                author = albumInfo.Author
+            });
+        }
+
+        Object newAsset = CreateTextAsset(assetName, JsonSerializer.Serialize(jsonArray));
+        if (!Singleton<ConfigManager>.instance.m_Dictionary.ContainsKey(assetName))
+            Singleton<ConfigManager>.instance.Add(assetName, ((TextAsset)newAsset).text);
+        return newAsset;
+    }
+
+    /// <summary>
+    ///     Creates a Text Asset with the given name and text
+    /// </summary>
+    /// <param name="name"></param>
+    /// <param name="text"></param>
+    /// <returns></returns>
     private static TextAsset CreateTextAsset(string name, string text)
     {
         var newAsset = new TextAsset(text)

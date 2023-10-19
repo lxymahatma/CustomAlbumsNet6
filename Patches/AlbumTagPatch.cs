@@ -7,7 +7,7 @@ using Il2CppAssets.Scripts.Database.DataClass;
 
 namespace CustomAlbums.Patches;
 
-internal class AlbumTagPatch
+internal static class AlbumTagPatch
 {
     /// <summary>
     ///     Adds a tag for Custom Albums on the top row.

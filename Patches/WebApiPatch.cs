@@ -7,12 +7,12 @@ using Object = Il2CppSystem.Object;
 
 namespace CustomAlbums.Patches;
 
-internal class WebApiPatch
+internal static class WebApiPatch
 {
     private static readonly Logger Logger = new(nameof(WebApiPatch));
 
     [HarmonyPatch(typeof(GameAccountSystem), nameof(GameAccountSystem.SendToUrl))]
-    internal class SendToUrlPatch
+    internal static class SendToUrlPatch
     {
         private static bool Prefix(string url, string method, Il2CppSystem.Collections.Generic.Dictionary<string, Object> datas)
         {

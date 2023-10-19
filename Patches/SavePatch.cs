@@ -6,7 +6,7 @@ using Il2CppAssets.Scripts.PeroTools.Platforms.Steam;
 
 namespace CustomAlbums.Patches;
 
-public static class SavePatch
+internal static class SavePatch
 {
     private static readonly Logger Logger = new(nameof(SavePatch));
 
@@ -14,7 +14,7 @@ public static class SavePatch
     ///     Remove custom data before saving, and restore custom data after saving.
     /// </summary>
     [HarmonyPatch(typeof(SteamSync), nameof(SteamSync.SaveLocal))]
-    internal class SaveLocalPatch
+    internal static class SaveLocalPatch
     {
         private static void Prefix()
         {
@@ -46,7 +46,7 @@ public static class SavePatch
     ///     Add custom data after loading save file.
     /// </summary>
     [HarmonyPatch(typeof(SteamSync), nameof(SteamSync.LoadLocal))]
-    internal class LoadLocalPatch
+    internal static class LoadLocalPatch
     {
         private static void Postfix()
         {
@@ -66,7 +66,7 @@ public static class SavePatch
     ///     Refresh data after cloud sync
     /// </summary>
     [HarmonyPatch(typeof(GameAccountSystem), nameof(GameAccountSystem.RefreshDatas))]
-    internal class RefreshDatasPatch
+    internal static class RefreshDatasPatch
     {
         private static void Prefix()
         {
@@ -90,7 +90,7 @@ public static class SavePatch
     ///     After a callback, re-add custom data
     /// </summary>
     [HarmonyPatch(typeof(GameAccountSystem), nameof(GameAccountSystem.OnSaveSelectCallback))]
-    internal class OnSaveSelectCallbackPatch
+    internal static class OnSaveSelectCallbackPatch
     {
         private static void Prefix(ref bool isLocal)
         {

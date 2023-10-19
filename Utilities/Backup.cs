@@ -30,6 +30,11 @@ public static class Backup
         ClearOldBackups();
     }
 
+    /// <summary>
+    ///     Create backup files for the given data
+    /// </summary>
+    /// <param name="filePath"></param>
+    /// <param name="data"></param>
     private static void CreateBackup(string filePath, object data)
     {
         try
@@ -47,14 +52,17 @@ public static class Backup
                     File.WriteAllText(filePath, str);
                     wroteFile = true;
                     break;
+
                 case byte[] bytes:
                     File.WriteAllBytes(filePath, bytes);
                     wroteFile = true;
                     break;
+
                 case Il2CppStructArray<byte> ilBytes:
                     File.WriteAllBytes(filePath, ilBytes);
                     wroteFile = true;
                     break;
+
                 default:
                     Log.Warning("Could not create backup for unsupported data type " + data.GetType().FullName);
                     break;
@@ -68,18 +76,19 @@ public static class Backup
         }
     }
 
+    /// <summary>
+    ///     Remove old backup files
+    /// </summary>
     private static void ClearOldBackups()
     {
         try
         {
-            var backups = Directory.EnumerateFiles(BackupPath).ToList();
-            foreach (var backup in from backup in backups
-                     let bkpDate = Directory.GetLastWriteTime(backup)
-                     where (DateTime.Now - bkpDate).Duration() > MaxBackupTime.Duration()
-                     select backup)
+            var backups = Directory.EnumerateFiles(BackupPath);
+
+            foreach (var oldBackupFile in backups.Where(IsBackupTooOld))
             {
-                Log.Msg("Removing old backup: " + backup);
-                File.Delete(backup);
+                Log.Msg($"Removing old backup: {oldBackupFile}");
+                File.Delete(oldBackupFile);
             }
 
             if (!File.Exists(BackupZip)) return;
@@ -97,6 +106,20 @@ public static class Backup
         }
     }
 
+    /// <summary>
+    ///     Check if the given backup file is too old
+    /// </summary>
+    /// <param name="filePath"></param>
+    /// <returns></returns>
+    private static bool IsBackupTooOld(string filePath)
+    {
+        var backupDate = File.GetLastWriteTime(filePath);
+        return DateTime.Now - backupDate > MaxBackupTime;
+    }
+
+    /// <summary>
+    ///     Compress all backup files into a single zip file
+    /// </summary>
     private static void CompressBackups()
     {
         try
@@ -109,7 +132,7 @@ public static class Backup
 
             using var zip = ZipFile.Open(BackupZip, ZipArchiveMode.Update);
 
-            var files = Directory.EnumerateFiles(BackupPath).Where(fn => !(Path.GetExtension(fn) == ".zip"));
+            var files = Directory.EnumerateFiles(BackupPath).Where(fn => Path.GetExtension(fn) != ".zip");
 
             foreach (var file in files)
             {

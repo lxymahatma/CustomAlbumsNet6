@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using System.Runtime.InteropServices;
 using MelonLoader;
+using Main = CustomAlbums.Main;
 
 [assembly: AssemblyTitle("CustomAlbums")]
 [assembly: AssemblyDescription("")]
@@ -31,5 +32,5 @@ using MelonLoader;
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("4.0.0.0")]
 [assembly: AssemblyFileVersion("4.0.0.0")]
-[assembly: MelonInfo(typeof(CustomAlbums.Main), "CustomAlbums", "4.0", "Mo10, RobotLucca, and Team Baller")]
+[assembly: MelonInfo(typeof(Main), "CustomAlbums", "4.0", "Mo10, RobotLucca, and Team Baller")]
 [assembly: MelonGame("PeroPeroGames", "MuseDash")]

@@ -1,17 +1,13 @@
 ﻿using System.Text.Json;
 
-namespace CustomAlbums.Utilities
-{
-    public static class Json
-    {
-        private static readonly JsonSerializerOptions DeserializeOptions = new()
-        {
-            PropertyNameCaseInsensitive = true
-        };
+namespace CustomAlbums.Utilities;
 
-        public static T Deserialize<T>(string json)
-        {
-            return JsonSerializer.Deserialize<T>(json, DeserializeOptions);
-        }
-    }
+public static class Json
+{
+    private static readonly JsonSerializerOptions DeserializeOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    public static T Deserialize<T>(string json) => JsonSerializer.Deserialize<T>(json, DeserializeOptions);
 }

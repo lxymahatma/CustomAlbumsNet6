@@ -1,14 +1,14 @@
-﻿using MelonLoader;
+﻿using CustomAlbums.Patches;
+using MelonLoader;
 
-namespace CustomAlbums
+namespace CustomAlbums;
+
+public class Main : MelonMod
 {
-    public class Main : MelonMod
+    public override void OnInitializeMelon()
     {
-        public override void OnInitializeMelon()
-        {
-            base.OnInitializeMelon();
-            ModSettings.Register();
-            Patches.AssetPatch.AttachHook();
-        }
+        base.OnInitializeMelon();
+        ModSettings.Register();
+        AssetPatch.AttachHook();
     }
 }

@@ -3,51 +3,51 @@ using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.Formats.Png;
 using UnityEngine;
+using Logger = CustomAlbums.Utilities.Logger;
 
-namespace CustomAlbums.Managers
+namespace CustomAlbums.Managers;
+
+public static class CoverManager
 {
-    public static class CoverManager
+    private static readonly Logger Logger = new(nameof(CoverManager));
+
+    public static Sprite GetCover(this Album album)
     {
-        private static readonly Utilities.Logger Logger = new(nameof(CoverManager));
+        if (!album.HasFile("cover.png")) return null;
 
-        public static Sprite GetCover(this Album album)
+        var stream = album.OpenFileStream("cover.png");
+        var bytes = stream.ToArray();
+
+        var tex = new Texture2D(2, 2);
+        tex.LoadRawTextureData(bytes);
+        tex.Apply();
+
+        return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+    }
+
+    public static AnimatedCover GetAnimatedCover(this Album album)
+    {
+        if (!album.HasFile("cover.gif")) return null;
+
+        var stream = album.OpenFileStream("cover.gif");
+        var image = GifDecoder.Instance.Decode<Rgba32>(new DecoderOptions(), stream);
+        var sprites = new Sprite[image.Frames.Count];
+
+        for (var i = 0; i < image.Frames.Count; i++)
         {
-            if (!album.HasFile("cover.png")) return null;
+            var frameImage = image.Frames.CloneFrame(i);
 
-            var stream = album.OpenFileStream("cover.png");
-            var bytes = stream.ToArray();
+            using var ms = new MemoryStream();
+            frameImage.Save(ms, new PngEncoder());
 
-            var tex = new Texture2D(2, 2);
-            tex.LoadRawTextureData(bytes);
+            var tex = new Texture2D(frameImage.Width, frameImage.Height);
+            tex.LoadRawTextureData(ms.ToArray());
             tex.Apply();
 
-            return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+            var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+            sprites[i] = sprite;
         }
 
-        public static AnimatedCover GetAnimatedCover(this Album album)
-        {
-            if (!album.HasFile("cover.gif")) return null;
-
-            var stream = album.OpenFileStream("cover.gif");
-            var image = GifDecoder.Instance.Decode<Rgba32>(new DecoderOptions(), stream);
-            var sprites = new Sprite[image.Frames.Count];
-
-            for (var i = 0; i < image.Frames.Count; i++)
-            {
-                var frameImage = image.Frames.CloneFrame(i);
-
-                using var ms = new MemoryStream();
-                frameImage.Save(ms, new PngEncoder());
-
-                var tex = new Texture2D(frameImage.Width, frameImage.Height);
-                tex.LoadRawTextureData(ms.ToArray());
-                tex.Apply();
-
-                var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
-                sprites[i] = sprite;
-            }
-
-            return new AnimatedCover(sprites, image.Frames.RootFrame.Metadata.GetGifMetadata().FrameDelay * 10);
-        }
+        return new AnimatedCover(sprites, image.Frames.RootFrame.Metadata.GetGifMetadata().FrameDelay * 10);
     }
 }

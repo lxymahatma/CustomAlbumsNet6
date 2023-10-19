@@ -12,6 +12,8 @@ public class MpegFileWrapper : IAudioWrapper
     public int Channels => _mpegFile.Channels;
     public int SampleRate => _mpegFile.SampleRate;
     public string Extension => "mp3";
+    public long Length => _mpegFile.Length;
+    public long Position => _mpegFile.Position;
     public long GetSampleCount() => _mpegFile.Length / sizeof(float);
 
     public int ReadSamples(float[] array) => _mpegFile.ReadSamples(array, 0, array.Length);

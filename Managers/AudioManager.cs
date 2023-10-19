@@ -9,7 +9,6 @@ using UnityEngine;
 using Action = Il2CppSystem.Action;
 using Logger = CustomAlbums.Utilities.Logger;
 
-// ReSharper disable ComplexConditionExpression
 // ReSharper disable AccessToModifiedClosure
 
 namespace CustomAlbums.Managers;
@@ -77,7 +76,14 @@ public static class AudioManager
         var index = 0;
 
         Coroutine coroutine = null;
-        coroutine = CreateCoroutine((Il2CppSystem.Func<bool>)delegate
+        coroutine = CreateCoroutine((Il2CppSystem.Func<bool>)LoadClipDelegate());
+
+        Coroutines.Add(name, coroutine);
+        _currentCoroutine = coroutine;
+
+        return audioClip;
+
+        bool LoadClipDelegate()
         {
             // Stop coroutine if the asset is unloaded
             if (audioClip is null)
@@ -96,7 +102,26 @@ public static class AudioManager
             var sampleArray = new float[Math.Min(AsyncReadSpeed, remainingSamples)];
             var readCount = audioWrapper.ReadSamples(sampleArray);
 
-            audioClip.SetData(sampleArray, index / audioWrapper.Channels);
+            try
+            {
+                audioClip.SetData(sampleArray, index / audioWrapper.Channels);
+            }
+            catch (Exception e)
+            {
+                if (audioWrapper.Extension == "ogg" && (double)audioWrapper.Position / 1000 > audioWrapper.Length)
+                    Logger.Warning(
+                        "Possible over-read of audio file. This is a file-dependent anomaly. Consider making a minimal edit and re-saving.");
+
+                Logger.Error(
+                    $"Exception while reading at offset {index} of {(double)audioWrapper.Position / 1000 / audioWrapper.Length} in {name}, aborting: {e.Message}");
+
+                audioWrapper.Abort();
+                stream.Dispose();
+
+                Coroutines.Remove(name);
+                _currentCoroutine = null;
+                return true;
+            }
 
             index += readCount;
             remainingSamples -= readCount;
@@ -108,14 +133,9 @@ public static class AudioManager
             Coroutines.Remove(name);
             _currentCoroutine = null;
 
-            Logger.Msg($"Finished async load of {name}.");
+            Logger.Msg($"Finished async load of {name}.{audioWrapper.Extension}");
             return true;
-        });
-
-        Coroutines.Add(name, coroutine);
-        _currentCoroutine = coroutine;
-
-        return audioClip;
+        }
     }
 
     /// <summary>

@@ -1,6 +1,18 @@
-# CustomAlbums2
-Allows for custom charts and music to be played in Muse Dash.  
+﻿# CustomAlbums .NET 6.0
+Full rewrite of [gamrguy/CustomAlbums](https://github.com/gamrguy/CustomAlbums) in .NET 6.0.  
+Currently in development, not ready for use.
 
-To build, make sure to SetPath.cmd as administrator and follow the instructions.  
-From there, you should be able to build with Visual Studio 2022 by opening the .sln file.  
-This version of CustomAlbums requires MelonLoader 0.6 or higher.  
+## Dependencies
+- [MelonLoader](https://github.com/LavaGang/MelonLoader/releases) v0.6 or higher
+- Muse Dash
+
+## Building
+- Install MelonLoader into Muse Dash and run it once.
+- Run SetPath.cmd as administrator and follow the instructions.
+- Build tested with Visual Studio 2022, MelonLoader 0.6.1, Muse Dash 3.9.0.
+
+## Credits & Contributions
+- [Mister Talk](https://github.com/SB15-MD) - Developer
+- [AshtonMemer](https://github.com/AshtonMemer) - Developer
+- [gamrguy](https://github.com/gamrguy) - Maintainer
+- [某10](https://github.com/mo10) - Original Developer (Feb 2021 - Dec 2021)

@@ -53,6 +53,21 @@
             <Private>false</Private>
             <HintPath>$(MelonNET6)\MelonLoader.dll</HintPath>
         </Reference>
+        <Reference Include="Il2CppInterop.Common, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+          <SpecificVersion>false</SpecificVersion>
+          <Private>false</Private>
+          <HintPath>$(MelonNET6)\Il2CppInterop.Common.dll</HintPath>
+        </Reference>
+        <Reference Include="Il2CppInterop.Generator, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+          <SpecificVersion>false</SpecificVersion>
+          <Private>false</Private>
+          <HintPath>$(MelonNET6)\Il2CppInterop.Generator.dll</HintPath>
+        </Reference>
+        <Reference Include="Il2CppInterop.Runtime, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+          <SpecificVersion>false</SpecificVersion>
+          <Private>false</Private>
+          <HintPath>$(MelonNET6)\Il2CppInterop.Runtime.dll</HintPath>
+        </Reference>
         <Reference Include="0Harmony, Version=2.9.0.0, Culture=neutral, PublicKeyToken=null">
             <SpecificVersion>false</SpecificVersion>
             <Private>false</Private>

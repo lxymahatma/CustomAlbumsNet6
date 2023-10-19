@@ -5,6 +5,7 @@
     <Nullable>disable</Nullable>
     <MelonRefs>true</MelonRefs>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <Target Name="CopyDLLs" AfterTargets="Build">
@@ -15,6 +16,12 @@
   <ItemGroup>
     <None Remove="Directory.Build.props" />
     <None Remove="SetPath.cmd" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio.Vorbis" Version="1.5.0" />
+    <PackageReference Include="NLayer" Version="1.14.0" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.0.2" />
   </ItemGroup>
 
 </Project>

@@ -11,7 +11,7 @@ IF %ERRORLEVEL% EQU 0 (
 
 @REM Sets the environment variable so we can use Directory.Build.Props
 :AUTH
-    SET /p "directory=Enter your Muse Dash directory in quotations: "
+    SET /p "directory=Enter your Muse Dash directory in quotations (should end in \Muse Dash): "
     SETX MD_NET6_DIRECTORY %directory%
     IF %ERRORLEVEL% NEQ 0 (
         ECHO An error occurred.
